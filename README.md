@@ -1,4 +1,4 @@
-# Optical Flow in Python
+# MDP Tracker
 Code for research in [HCRL](https://sites.utexas.edu/hcrl/) with [Minkyu Kim](https://github.com/ssteveminq)
 
 ### Goals
