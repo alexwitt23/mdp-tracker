@@ -27,8 +27,11 @@ def select_boxes(boxes):
 if __name__ == '__main__' :
 
 	# Read video
-	#video = cv2.VideoCapture(0)
-	video = cv2.VideoCapture("sample_video.mp4")
+		# Read video or webcam
+	if len(sys.argv) == 2:
+		video = cv2.VideoCapture(sys.argv[1])
+	else:
+		video = cv2.VideoCapture(0)
 
 	# Exit if video not opened.
 	if not video.isOpened():
@@ -62,7 +65,7 @@ if __name__ == '__main__' :
 	
 	while True:
 
-		c = cv2.waitKey(10)
+		c = cv2.waitKey(40)
 
 		# Read a new frame
 		if not pause:
@@ -71,24 +74,34 @@ if __name__ == '__main__' :
 		# Break if bad frame
 		if not ok:
 			break
+			
 		# Update Optical Flow frame
 		optical_flow.update_frame(frame)
 
 		# Make sure we only do detection every TIME
 		if ((cv2.getTickCount() - timer) / cv2.getTickFrequency()) > TIME and not pause: 
-			# Do YOLO Detection
-			boxes = nn.detect(frame)
-			boxes_track = optical_flow.track()
-		
-		# use yolo class to draw boxes
-		frame = nn.draw_boxes(frame)
+			
+			# If no boxes being tracked,
+			# do yolo detection and update tracked boxes
+			if len(boxes_track) == 0:
+				boxes = nn.detect(frame)
+				frame = nn.draw_boxes(frame)
+
+		if len(boxes_track) !=  0:
+			boxes_track = optical_flow.tracking_flow()
+			# use yolo class to draw boxes
+			#frame = nn.draw_boxes(frame)
+			frame = optical_flow.display_tracked_boxes(frame)
 
 		cv2.imshow("Tracking", frame)
+		
 		if c == 113: #q
 			break
-		elif c == 112: #p
+		elif c == 32: #space
 			# pause and select boxes to track
-			boxes_to_track = select_boxes(boxes)
-			optical_flow.update_tracker(boxes, frame)
+			boxes_track = select_boxes(boxes)
+			optical_flow.update_cur_bbox_vec(boxes)
+
+		
 
 

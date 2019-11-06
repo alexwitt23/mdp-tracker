@@ -22,6 +22,8 @@ class yolov3:
         confidences = []
         classIDs = []
 
+        nms_boxes = []
+
         # loop over each of the layer outputs. We only care about one detection that is human
         for output in layerOutputs:
 
@@ -55,14 +57,13 @@ class yolov3:
                             confidences.append(float(confidence))
                             
                             indices = cv2.dnn.NMSBoxes(boxes, confidences, .2, .2)
-                            
-                            nms_boxes = []
 
                             for i in indices:
                                 idx = i[0]
                                 nms_boxes.append((boxes[idx][0],boxes[idx][1],boxes[idx][2],boxes[idx][3]))
                             
                             self.boxes = nms_boxes
+
         return nms_boxes
 
     def draw_boxes(self, frame):
@@ -73,5 +74,5 @@ class yolov3:
             # draw a bounding box rectangle and label on the image
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0,255,0), 3)
             cv2.putText(frame, str(idx), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        
+            
         return frame

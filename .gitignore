@@ -2,3 +2,4 @@ model/
 !model/model.txt
 *.mp4
 __pycache__/
+mdp_tracker/__pycache__/

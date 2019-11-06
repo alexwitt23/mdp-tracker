@@ -4,6 +4,8 @@ import time
 import cv2
 import sys
 import numpy as np
+
+from yolov3 import yolov3
  
 # Opencv 3.x
 
@@ -22,28 +24,22 @@ def select_boxes(boxes):
 def initialize_tracker(boxes, OPENCV_OBJECT_TRACKERS, type):
 	''' Initialize tracker on input boxes '''
 	print("initializing")
-	print(boxes)
 	trackers = []
 	for box in boxes:
+
 		tracker = OPENCV_OBJECT_TRACKERS[str(type)]()
-		print(box)
 		(x, y) = (box[0], box[1])
 		(w, h) = (box[2], box[3])
 		box_init = (x, y, w, h)
 		ok_init = tracker.init(frame_track, box_init)
 		print("initialized:", ok_init)
 		trackers.append(tracker)
+
 	return trackers
 
 
 if __name__ == '__main__' :
 
-
-	net = cv2.dnn.readNetFromDarknet('./model/yolov3-tiny.cfg','./model/yolov3-tiny.weights')
-	# determine only the *output* layer names that we need from YOLO
-	ln = net.getLayerNames()
-	ln = [ln[i[0] - 1] for i in net.getUnconnectedOutLayers()]
-	
 	# Dictionary of OpenCV trackers
 	OPENCV_OBJECT_TRACKERS = {
 		"csrt": cv2.TrackerCSRT_create,
@@ -56,10 +52,13 @@ if __name__ == '__main__' :
 	}
  
 	# Choose and create tracker
-	tracker = OPENCV_OBJECT_TRACKERS["boosting"]()
+	tracker = OPENCV_OBJECT_TRACKERS["csrt"]()
 
-	# Read video
-	video = cv2.VideoCapture(0)
+	# Read video or webcam
+	if len(sys.argv) == 2:
+		video = cv2.VideoCapture(sys.argv[1])
+	else:
+		video = cv2.VideoCapture(0)
 
 	# Exit if video not opened.
 	if not video.isOpened():
@@ -71,6 +70,10 @@ if __name__ == '__main__' :
 	if not ok:
 		print('Cannot read video file')
 		sys.exit()
+
+	# Create Neural Net
+	H, W = frame.shape[:2]
+	nn = yolov3('./model/yolov3-tiny.cfg','./model/yolov3-tiny.weights', H, W)
 
 	# Start timer
 	timer = cv2.getTickCount()
@@ -111,58 +114,9 @@ if __name__ == '__main__' :
 		
 		# Make sure we only do detection every .01s
 		if ((cv2.getTickCount() - timer) / cv2.getTickFrequency()) > TIME and not pause: 
-
-			timer = cv2.getTickCount() 
-			(H, W) = frame.shape[:2]
-			# construct a blob from the input image and then perform a forward
-			# pass of the YOLO object detector, giving us our bounding boxes and
-			# associated probabilities
-
-			blob = cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416),swapRB=True, crop=False)
-			net.setInput(blob)
-			layerOutputs = net.forward(ln)
-
-			boxes = []
-			confidences = []
-			classIDs = []
-
-			# loop over each of the layer outputs. We only care about one detection that is human
-			for output in layerOutputs:
-
-				for detection in output:
-						# extract the class ID and confidence (i.e., probability) of
-						# the current object detection
-						scores = detection[5:]
-						classID = np.argmax(scores)
-						confidence = scores[classID]
-
-						# Look for humans
-						if classID == 0:
-							# filter out weak predictions by ensuring the detected
-							# probability is greater than the minimum probability
-							if confidence > .30:
-								# scale the bounding box coordinates back relative to the
-								# size of the image, keeping in mind that YOLO actually
-								# returns the center (x, y)-coordinates of the bounding
-								# box followed by the boxes' width and height
-								box = detection[0:4] * np.array([W, H, W, H])
-								(centerX, centerY, width, height) = box.astype("int")
-					
-								# use the center (x, y)-coordinates to derive the top and
-								# and left corner of the bounding box
-								x = int(centerX - (width / 2))
-								y = int(centerY - (height / 2))
-					
-								# update our list of bounding box coordinates, confidences,
-								# and class IDs
-								boxes.append([x, y, int(width), int(height)])
-								confidences.append(float(confidence))
-
-			idxs = cv2.dnn.NMSBoxes(boxes, confidences, .30, .1)
-
-		# Calculate Frames per second (FPS)
-		# fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
-
+			# Do YOLO Detection
+			boxes = nn.detect(frame)
+			
 		# Use waitkey
 		if key == 32:
 			pause = not pause
@@ -174,14 +128,8 @@ if __name__ == '__main__' :
 			frame_track = frame 
 			# pause while getting boxes to track
 			'''Plot the detections'''
-				# loop over the indexes we are keeping
-			for i in idxs.flatten():
-				# extract the bounding box coordinates
-				(x, y) = (boxes[i][0], boxes[i][1])
-				(w, h) = (boxes[i][2], boxes[i][3])
-				# draw a bounding box rectangle and label on the image
-				cv2.rectangle(frame, (x, y), (x + w, y + h), (0,255,0), 3)
-				cv2.putText(frame, str(i), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+			# use yolo class to draw boxes
+			frame = nn.draw_boxes(frame)
 			cv2.imshow("Tracking", frame)
 			cv2.waitKey(1)
 
