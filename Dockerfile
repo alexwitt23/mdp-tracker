@@ -59,4 +59,21 @@ RUN mkdir /opencv-${OPENCV_VERSION}/cmake_binary \
 && rm /${OPENCV_VERSION}.zip \
 && rm -r /opencv-${OPENCV_VERSION}
 
+# Install libfreenect
+
+RUN apt-get update \
+    && apt-get install -y \
+         libusb-1.0-0-dev \
+	 cython \
+    && rm -rf /var/lib/apt/lists/*
+
+
+RUN git clone https://github.com/OpenKinect/libfreenect \
+  && cd libfreenect \
+  && mkdir build \
+  && cd build \
+  && cmake .. -DBUILD_PYTHON=OFF -DBUILD_PYTHON3=ON -DCMAKE_BUILD_TYPE=debug \
+  && make 
+
+
 WORKDIR /host/
