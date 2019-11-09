@@ -11,5 +11,5 @@ all: image
 
 .PHONY: image
 image:
-	docker build -t $(IMAGERY_IMAGE):$(IMAGE_TAG) -f Dockerfile $(DOCKERFLAGS) ..
+	docker build -t $(IMAGERY_IMAGE):$(IMAGE_TAG) -f Dockerfile $(DOCKERFLAGS) .
 

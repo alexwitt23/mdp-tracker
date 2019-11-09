@@ -1,5 +1,7 @@
 FROM nvidia/cuda:10.0-cudnn7-devel-ubuntu18.04
 
+WORKDIR /
+
 RUN apt-get update \
     && apt-get install -y \
 	python3.7 \ 
@@ -25,10 +27,11 @@ RUN apt-get update \
 	gfortran \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install numpy \ 
-  && pip3 install --upgrade imutils
+COPY requirements.txt .
 
-WORKDIR /
+RUN pip3 install --upgrade pip
+
+RUN pip3 install -r requirements.txt
 
 ARG OPENCV_VERSION="4.1.1"
 
@@ -67,13 +70,11 @@ RUN apt-get update \
 	 cython \
     && rm -rf /var/lib/apt/lists/*
 
-
 RUN git clone https://github.com/OpenKinect/libfreenect \
   && cd libfreenect \
   && mkdir build \
   && cd build \
   && cmake .. -DBUILD_PYTHON=OFF -DBUILD_PYTHON3=ON -DCMAKE_BUILD_TYPE=debug \
   && make 
-
 
 WORKDIR /host/

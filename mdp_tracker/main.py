@@ -4,15 +4,33 @@ import time
 import cv2
 import sys
 import numpy as np
+from collections import namedtuple
 
 from yolov3 import yolov3
 
+# Define rectangle tuple for easier iou calc
+Rectangle = namedtuple('Rectangle', 'xmin ymin xmax ymax')
+
+def iou(a, b): 
+	"""Get IOU of two boxes"""
+	a1 = (a.xmin - a.xmax) * (a.ymin - a.ymax)
+	a2 = (b.xmin - b.xmax) * (b.ymin - b.ymax)
+
+	dx = min(a.xmax, b.xmax) - max(a.xmin, b.xmin)
+	dy = min(a.ymax, b.ymax) - max(a.ymin, b.ymin)
+	
+	if (dx>=0) and (dy>=0):
+		return (dx*dy / (a1 + a2 - (dx*dy)))	
+
 def select_boxes(boxes):
-	''' Wait for first boxes to be choosen '''
-	# Read in boxes to track
+	"""Select detection boxes for tracking"""
+
 	boxes_to_track = []
+
 	while True:
+
 		ans = int(input("Enter the ID's of boxes to be tracked: "))
+		
 		if ans == -1:
 			break
 		else:
@@ -23,8 +41,8 @@ def select_boxes(boxes):
 def initialize_tracker(boxes, OPENCV_OBJECT_TRACKERS, type):
 	''' Initialize tracker on input boxes '''
 	trackers = []
-	for box in boxes:
 
+	for box in boxes:
 		tracker = OPENCV_OBJECT_TRACKERS[str(type)]()
 		(x, y) = (box[0], box[1])
 		(w, h) = (box[2], box[3])
@@ -34,29 +52,6 @@ def initialize_tracker(boxes, OPENCV_OBJECT_TRACKERS, type):
 		trackers.append(tracker)
 
 	return trackers
-
-def calculateIntersection(rect1, rect2):
-	# rect = (x,y,w,h)
-	x1, y1, w1, h1 = rect1
-	x2, y2, w2, h2 = rect2
-
-    if x1 >= x2 and (x1+w1) <= (x2+w2) : # Contained
-        intersection = (x1+w1) - x1
-
-    elif x1 < x2 and (x1+w1) > (x2+w2): # Contains
-        intersection = b1 - b0
-
-    elif a0 < b0 and a1 > b0: # Intersects right
-        intersection = a1 - b0
-
-    elif a1 > b1 and a0 < b1: # Intersects left
-        intersection = b1 - a0
-		
-    else: # No intersection (either side)
-        intersection = 0
-
-    return intersection
-
 
 if __name__ == '__main__' :
 
@@ -74,7 +69,7 @@ if __name__ == '__main__' :
 	# Choose and create tracker
 	tracker = OPENCV_OBJECT_TRACKERS["csrt"]()
 	# Colors for tracking boxes
-	colors = np.random.randint(0,255,(100,3))
+	colors = np.random.randint(0,255,(50,3))
 
 	# Read video or webcam
 	if len(sys.argv) == 2:
@@ -105,13 +100,11 @@ if __name__ == '__main__' :
 	boxes = []
 
 	TIME = .04
-	ok_init = False
-	idxs = []
+	IOU_THRESH = .65
 
-	choose_boxes = False
-	stop = True
 	boxes_to_track = []
 	pause = False
+
 	# Loop over video
 	while True:
 
@@ -128,13 +121,16 @@ if __name__ == '__main__' :
 				if ok:
 					(x, y, w, h) = [int(v) for v in box]
 					cv2.rectangle(frame, (x, y), (x + w, y + h), colors[idx].tolist(), 2)
-					rects.append((x, y, w, h))
+					rects.append(Rectangle(x, y, x+w, y+h))
 
 			for idx1, rect1 in enumerate(rects):
 				for idx2, rect2 in enumerate(rects):
 					# if not same rect, check intersection
-					if (idx1 != idx2):
-						calculateIntersection(rect1, rect2)
+					_iou = iou(rect1, rect2)
+					if idx1 != idx2 and (_iou != None) and _iou >= IOU_THRESH:
+						trackers = []
+						boxes_to_track = []
+						
 
 		# Break if bad frame
 		if not ok:
