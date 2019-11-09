@@ -6,12 +6,11 @@ import sys
 import numpy as np
 
 from yolov3 import yolov3
- 
-# Opencv 3.x
 
 def select_boxes(boxes):
 	''' Wait for first boxes to be choosen '''
 	# Read in boxes to track
+	boxes_to_track = []
 	while True:
 		ans = int(input("Enter the ID's of boxes to be tracked: "))
 		if ans == -1:
@@ -23,7 +22,6 @@ def select_boxes(boxes):
 
 def initialize_tracker(boxes, OPENCV_OBJECT_TRACKERS, type):
 	''' Initialize tracker on input boxes '''
-	print("initializing")
 	trackers = []
 	for box in boxes:
 
@@ -36,6 +34,28 @@ def initialize_tracker(boxes, OPENCV_OBJECT_TRACKERS, type):
 		trackers.append(tracker)
 
 	return trackers
+
+def calculateIntersection(rect1, rect2):
+	# rect = (x,y,w,h)
+	x1, y1, w1, h1 = rect1
+	x2, y2, w2, h2 = rect2
+
+    if x1 >= x2 and (x1+w1) <= (x2+w2) : # Contained
+        intersection = (x1+w1) - x1
+
+    elif x1 < x2 and (x1+w1) > (x2+w2): # Contains
+        intersection = b1 - b0
+
+    elif a0 < b0 and a1 > b0: # Intersects right
+        intersection = a1 - b0
+
+    elif a1 > b1 and a0 < b1: # Intersects left
+        intersection = b1 - a0
+		
+    else: # No intersection (either side)
+        intersection = 0
+
+    return intersection
 
 
 if __name__ == '__main__' :
@@ -53,6 +73,8 @@ if __name__ == '__main__' :
  
 	# Choose and create tracker
 	tracker = OPENCV_OBJECT_TRACKERS["csrt"]()
+	# Colors for tracking boxes
+	colors = np.random.randint(0,255,(100,3))
 
 	# Read video or webcam
 	if len(sys.argv) == 2:
@@ -99,12 +121,20 @@ if __name__ == '__main__' :
 
 		# Do tracking 
 		if len(trackers) != 0:
-			for tracker in trackers:
+			rects = []
+			for idx, tracker in enumerate(trackers):
 				ok, box = tracker.update(frame)
 				# Plot if found
 				if ok:
 					(x, y, w, h) = [int(v) for v in box]
-					cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+					cv2.rectangle(frame, (x, y), (x + w, y + h), colors[idx].tolist(), 2)
+					rects.append((x, y, w, h))
+
+			for idx1, rect1 in enumerate(rects):
+				for idx2, rect2 in enumerate(rects):
+					# if not same rect, check intersection
+					if (idx1 != idx2):
+						calculateIntersection(rect1, rect2)
 
 		# Break if bad frame
 		if not ok:
@@ -141,7 +171,7 @@ if __name__ == '__main__' :
 			boxes_to_track = select_boxes(boxes)
 
 			if len(boxes_to_track) != 0:
-				pause = not pause
+				# Initialize trackers
+				trackers = initialize_tracker(boxes_to_track, OPENCV_OBJECT_TRACKERS, "boosting")
 			
-			# Initialize trackers
-			trackers = initialize_tracker(boxes_to_track, OPENCV_OBJECT_TRACKERS, "boosting")
+			pause = not pause
