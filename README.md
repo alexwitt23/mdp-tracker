@@ -8,4 +8,7 @@ Combine object tracking or optical flow with object detection to track a unique 
 Create a MDP agent to use multiple inputs to track unique targets. 
 
 # Run with Docker
-`sh run.sh`
+
+For devices with no camera: `sh run.sh`
+
+For devices with a camera: `sh run-camera.sh`
