@@ -13,3 +13,6 @@ all: image
 image:
 	docker build -t $(IMAGERY_IMAGE):$(IMAGE_TAG) -f Dockerfile $(DOCKERFLAGS) .
 
+.PHONY:
+ros: 
+	docker build -t $(IMAGERY_IMAGE):ros -f Dockerfile.ros .
